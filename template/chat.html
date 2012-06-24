@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" >
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <meta content="" name="description">
+    <meta content="" name="author">
+    <link rel="stylesheet" href="../static/framework/bootstrap/css/bootstrap.css">
+    <link rel="stylesheet" href="../static/css/trendy-con.css">
+    <style>
+      body {
+          padding-top: 60px; /* 60px to make the container go all the way to the bottom of the topbar */
+      }
+    </style>
+  </head>
+  <body>
+    <div class="navbar navbar-fixed-top">
+      <div class="navbar-inner">
+        <div class="container">
+          <a class="brand" href="#">Trendy Connection</a>
+        </div>
+      </div>
+    </div>
+    <div class="container">
+      <div class="row chat-window">
+        <div class="span12 message">
+          <div class="hero-unit well">
+            <span class="nickname"><strong></strong></span>
+            <p>Welcome To Trendy Connection!</p>
+          </div>
+        </div>
+      </div>
+      <div class="row input-window">
+          <div class="span12">
+          <textarea class="input-area"></textarea>
+          </div>
+      </div>
+    </div>
+    <script src="../static/framework/jquery/jquery.js"></script>
+    <script src="../static/framework/bootstrap/js/bootstrap-transition.js"></script>
+    <script src="../static/framework/bootstrap/js/bootstrap-alert.js"></script>
+    <script src="../static/framework/bootstrap/js/bootstrap-modal.js"></script>
+    <script src="../static/framework/bootstrap/js/bootstrap-dropdown.js"></script>
+    <script src="../static/framework/bootstrap/js/bootstrap-scrollspy.js"></script>
+    <script src="../static/framework/bootstrap/js/bootstrap-tab.js"></script>
+    <script src="../static/framework/bootstrap/js/bootstrap-tooltip.js"></script>
+    <script src="../static/framework/bootstrap/js/bootstrap-popover.js"></script>
+    <script src="../static/framework/bootstrap/js/bootstrap-button.js"></script>
+    <script src="../static/framework/bootstrap/js/bootstrap-collapse.js"></script>
+    <script src="../static/framework/bootstrap/js/bootstrap-carousel.js"></script>
+    <script src="../static/framework/bootstrap/js/bootstrap-typeahead.js"></script>
+    <script type="text/javascript">
+      var ws;
+      var participants = new Array(5);
+      var appendMsg= function (msg, author) {
+        //append message to the chat window
+        var messages = $(".chat-window");
+
+        var msg_container = document.createElement('div');
+        msg_container.setAttribute("class", "span12 message");
+
+        var msg_div = document.createElement('div');
+        msg_div.setAttribute("class", "hero-unit well");
+
+        var name_span = document.createElement('span');
+        name_span.setAttribute("class", "nickname");
+        
+        name_span.innerHTML = "<strong>" + author + "</strong>";
+        msg_div.appendChild(name_span);
+        msg_div.innerHTML = msg_div.innerHTML + "<p>" + msg + "</p>";
+        msg_container.appendChild(msg_div);
+
+        messages.append(msg_container);
+        messages.scrollTop(messages.prop("scrollHeight"));
+      };
+      var updateParticipants = function (index, nickname, sats) {
+        if (sats === "online"){
+          participants[index] = nickname;
+        } else if (sats === "offline"){
+          participants[index] = "";
+        }
+      };
+      var getMsg = function (parsedData) {
+        //get msg content
+        if (parsedData[0] === "say"){
+          return parsedData[2];
+        }else if (parsedData[0] === "update"){
+          updateParticipants(parseInt(parsedData[1]), parsedData[2], parsedData[3]);
+          return parsedData[2]+" is "+parsedData[3]
+        }else if (parsedData[0] === "started"){
+          return "Chat is started!";
+        }
+      };
+      var getAuthor = function (parsedData) {
+        //get msg author
+        if (parsedData[0] !== "say"){
+          return "System";
+        } else {
+          return parsedData[1];
+        }
+      };
+      var ws_ready = function () {
+        if ("WebSocket" in window) {
+          ws = new WebSocket("ws://192.168.1.43:80/service");
+        } else if ("MozWebSocket" in window) {
+          ws = new MozWebSocket("ws://192.168.1.43:80/service");
+        } 
+        if (ws) {
+          // browser supports websockets
+          ws.onopen = function() {
+            // wsebsocket is connected
+            appendMsg("websocket connected!", "System");
+            ws.send("init/email/nickname/channel");
+            // send hello data to server.
+          };
+          ws.onmessage = function (evt) {
+            var receivedMsg = evt.data;
+            console.log(receivedMsg);
+            var parsedData = receivedMsg.split("/");
+            var msg = getMsg(parsedData);
+            var author = getAuthor(parsedData);
+            appendMsg(msg, author);
+          };
+          ws.onclose = function() {
+            // websocket was closed
+            appendMsg("Connection closed", "Sys");
+          };
+        } else {
+          appendMsg("Sorry, your browser doesn't support websocket!", "Sys");
+        }
+      };
+      var send = function (ws){
+        if(ws){
+          msg = $(".input-area").val();
+          console.log(msg);
+          $(".input-area").val("");
+          ws.send("say/nickname/"+msg);
+        }
+      };
+      $(document).ready(function () {
+        ws_ready();
+        $(".input-area").keypress(function(e){
+          if(e.which == 13){
+            send(ws);
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
